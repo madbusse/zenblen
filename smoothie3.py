@@ -13,8 +13,6 @@
 # To run: "python3 smoothie3.py"
 
 ### Helpful notes
-    # NB: BACKEND IS NON_FUNCTIONAL; just a prototype due to time constraints
-        # Tkinter is non-threadable... consider using client/server instead?
     # wxPython allows dynamical layout of elements
     # PySimpleGUI uses nested Python lists to lay out its elements
 
@@ -24,7 +22,6 @@
     # add functionality to add multiple smoothies to order
     # add images of smoothies
     # add sound effects
-    # get gui/backend integration working
 
 ### LIBRARIES
 # using the PySimpleGUI package bc it integrates Tkinter, PyQt, wxPython, & Remi
@@ -39,9 +36,7 @@ from PIL import Image, ImageTk
 import threading
 import time
 
-# Backend - prototype (not finished)
-# having issues bc tkinter is "non-threadable" - consider alternate method
-# perhaps client/server setup?
+# Backend
 class SmoothieBackend:
     """ 
     Class for the Backend implementation of our Smoothie Kiosk.
@@ -91,9 +86,9 @@ class SmoothieBackend:
 
         # track order counts in a dictionary, smoothie : qty ordered
         self.order_cts = {
-            'strawberry smoothie': 0,
-            'mango smoothie': 0,
-            'multifruit smoothie': 0
+            'Strawberry Smoothie - $5': 0,
+            'Mango Smoothie - $4': 0,
+            'Multifruit Smoothie - $6': 0
         }
         # int for tracking profits
         self.profits = 0
@@ -113,18 +108,23 @@ class SmoothieBackend:
                 self.order_cts[order] += 1
                 
                 # decrement inventory & increment profits, by smoothie type
-                if order == 'Strawberry Smoothie':
+                if order == 'Strawberry Smoothie - $5':
                     self.profits += 5
                     for key, value in self.strawb_recipe.items():
                         self.inventory[key] -= value
-                if order == 'Mango Smoothie':
+                if order == 'Mango Smoothie - $4':
                     self.profits += 4
                     for key, value in self.mango_recipe.items():
                         self.inventory[key] -= value
-                if order == 'Multifruit Smoothie':
+                if order == 'Multifruit Smoothie - $6':
                     self.profits += 6
-                    for key, value in self.multifruit_recipe_recipe.items():
+                    for key, value in self.multifruit_recipe.items():
                         self.inventory[key] -= value
+
+                # print current inventory and profits to check backend is working
+                print('Profits: $' + str(self.profits))
+                print('Current Inventory: ' + str(self.inventory))
+                print('Items Ordered: ' + str(self.order_cts))
 
     # need to call place_order function from gui, when a smoothie is ordered
     # smoothie = str, name of smoothie
@@ -171,47 +171,26 @@ class SmoothieGUI:
         
         # designing screen layouts
         
-        # screen 1: welcome
-        self.layout_welcome = [
-            [sg.Text('Looking for a healthy pick-me-up? \n You are in luck! \n Grab a quick & delicious smoothie! \n Tap the smoothie to order.' \
-                     , justification='center', font=('Baloo 2', 30))],
-            [sg.Button(key="Next", image_filename="strawb_resize.png")]
-        ]
         
-        #screen 2: menu
-        self.layout_menu = [
-            [sg.Text('Smoothie Menu', font=('Baloo 2', 30))],
-            [sg.Button('Strawberry Smoothie - $5'), sg.Button('Mango Smoothie - $4')],
-            [sg.Button('Multifruit Smoothie - $6')],
-            [sg.Text('Ingredients', font=('Baloo 2', 30))],
-            [sg.Text('Strawberry Smoothie: strawberries, bananas, greek yogurt, ice.', font=('Baloo 2', 15))],
-            [sg.Text('Mango Smoothie: mango, banana, ice.', font=('Baloo 2', 15))],
-            [sg.Text('Multifruit Smoothie: strawberries, orange juice, blueberries, mango, greek yogurt.', font=('Baloo 2', 12))]
-        ]
+       
         
         # screen 3: placing order
         # we do not set up here bc the price is dependent on the smoothie being ordered,
         # so we will create this layout in a later function.
-        self.layout_place_order = None
+        #self.layout_place_order = None
         
         # screen 4: making smoothie (progress bar)
-        self.layout_making_smoothie = [
-            [sg.Text('Making Your Smoothie...', font=('Baloo 2', 30))],
-            [sg.ProgressBar(100, orientation='h', size=(20, 20), key='progressbar')],
-        ]
+
 
         # screen 5: thank you
-        self.layout_thank_you = [
-            [sg.Text('Thank You for Your Order!', font=('Baloo 2', 30))],
-            [sg.Text('Enjoy your smoothie :) \n Tap the smoothie to start a new order.', \
-                     font=('Baloo 2', 20), justification="center")],
-            [sg.Button(key="Return to Menu", image_filename="orange_resize.png")],
-            [sg.Button('Exit')]
-        ]
+
 
         # setting up intial window
-        self.window = sg.Window('Smoothie Kiosk', layout=self.layout_welcome, \
-                                size=self.screen_size, element_justification='c', finalize=True)
+        #self.window = sg.Window('Smoothie Kiosk', layout=self.layout_welcome, \
+        #                        size=self.screen_size, element_justification='c', finalize=True)
+        #self.window = None
+        self.window = sg.Window('Welcome')
+        self.show_welcome_screen()
 
     def run(self):
         """
@@ -240,14 +219,13 @@ class SmoothieGUI:
                 self.show_place_order_screen(event)
                 self.current_order = event
             # elif event == 'Place Order':
-            #     self.show_place_order_screen(self.current_order)
+            #      self.show_place_order_screen(self.current_order)
             
             # order placed
             elif event == 'Place Order':
                 # communicate the order to the backend
-                #smoothie = values['smoothie']
-                #self.backend.place_order(smoothie)
-                
+                #smoothie = values[self.current_order]
+                self.backend.place_order(self.current_order)
                 self.show_making_smoothie_screen()
             
             # go back
@@ -274,7 +252,12 @@ class SmoothieGUI:
         Outputs: None
         """
         self.window.close()
-        self.window = sg.Window('Smoothie Kiosk', layout=self.layout_welcome, \
+        layout_welcome = [
+            [sg.Text('Looking for a healthy pick-me-up? \n You are in luck! \n Grab a quick & delicious smoothie! \n Tap the smoothie to order.' \
+                     , justification='center', font=('Baloo 2', 30))],
+            [sg.Button(key="Next", image_filename="strawb_resize.png")]
+        ]
+        self.window = sg.Window('Smoothie Kiosk', layout=layout_welcome, \
                                 size=self.screen_size, element_justification='c', finalize=True)
 
     def show_menu_screen(self):
@@ -286,7 +269,16 @@ class SmoothieGUI:
         Outputs: None
         """
         self.window.close()
-        self.window = sg.Window('Smoothie Kiosk', layout=self.layout_menu, \
+        layout_menu = [
+            [sg.Text('Smoothie Menu', font=('Baloo 2', 30))],
+            [sg.Button('Strawberry Smoothie - $5'), sg.Button('Mango Smoothie - $4')],
+            [sg.Button('Multifruit Smoothie - $6')],
+            [sg.Text('Ingredients', font=('Baloo 2', 30))],
+            [sg.Text('Strawberry Smoothie: strawberries, bananas, greek yogurt, ice.', font=('Baloo 2', 15))],
+            [sg.Text('Mango Smoothie: mango, banana, ice.', font=('Baloo 2', 15))],
+            [sg.Text('Multifruit Smoothie: strawberries, orange juice, blueberries, mango, greek yogurt.', font=('Baloo 2', 12))]
+        ]
+        self.window = sg.Window('Smoothie Kiosk', layout=layout_menu, \
                                 size=self.screen_size, element_justification='c', finalize=True)
 
     def show_place_order_screen(self, smoothie):
@@ -310,12 +302,12 @@ class SmoothieGUI:
         str_price = str(price)
         
         # now that we know the price, we can design the layout
-        self.layout_place_order = [
+        layout_place_order = [
             [sg.Text('Place Your Order', font=('Baloo 2', 30))],
             [sg.Text('Total to Pay: $ ' + str_price, font=('Baloo 2', 20))],
             [sg.Button('Place Order'), sg.Button('Back')]
         ]
-        self.window = sg.Window('Smoothie Kiosk', layout=self.layout_place_order, \
+        self.window = sg.Window('Smoothie Kiosk', layout=layout_place_order, \
                                 size=self.screen_size, element_justification='c', finalize=True)
 
     def show_making_smoothie_screen(self):
@@ -327,7 +319,11 @@ class SmoothieGUI:
         Outputs: None
         """
         self.window.close()
-        self.window = sg.Window('Smoothie Kiosk', layout=self.layout_making_smoothie, \
+        layout_making_smoothie = [
+            [sg.Text('Making Your Smoothie...', font=('Baloo 2', 30))],
+            [sg.ProgressBar(100, orientation='h', size=(20, 20), key='progressbar')],
+        ]
+        self.window = sg.Window('Smoothie Kiosk', layout=layout_making_smoothie, \
                                 size=self.screen_size, element_justification='c', finalize=True)
 
         # progressbar - 5 seconds to make smoothie
@@ -346,7 +342,14 @@ class SmoothieGUI:
         Outputs: None
         """
         self.window.close()
-        self.window = sg.Window('Smoothie Kiosk', layout=self.layout_thank_you, \
+        layout_thank_you = [
+            [sg.Text('Thank You for Your Order!', font=('Baloo 2', 30))],
+            [sg.Text('Enjoy your smoothie :) \n Tap the smoothie to start a new order.', \
+                     font=('Baloo 2', 20), justification="center")],
+            [sg.Button(key="Return to Menu", image_filename="orange_resize.png")],
+            [sg.Button('Exit')]
+        ]
+        self.window = sg.Window('Smoothie Kiosk', layout=layout_thank_you, \
                                 size=self.screen_size, element_justification='c', finalize=True)
 
 
@@ -355,18 +358,17 @@ if __name__ == '__main__':
     # setting color theme
     sg.theme('LightGreen4')
 
-    #backend = SmoothieBackend()
-    backend = None
+    # creating GUI and Backend objects
+    backend = SmoothieBackend()
     gui = SmoothieGUI(backend)
     gui.run()
 
-    # commenting out threading bc of error due to tkinter:
+    # threading GUI and Backend
+    backend_thread = threading.Thread(target=backend.process_orders)
+    gui_thread = threading.Thread(target=gui.run)
 
-    #backend_thread = threading.Thread(target=backend.process_orders)
-    #gui_thread = threading.Thread(target=gui.run)
+    backend_thread.start()
+    gui_thread.start()
 
-    #backend_thread.start()
-    #gui_thread.start()
-
-    #backend_thread.join()
-    #gui_thread.join()
+    backend_thread.join()
+    gui_thread.join()
